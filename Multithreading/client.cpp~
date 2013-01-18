@@ -1,0 +1,148 @@
+#include "client.h"
+
+client::client(const char* IP, const char* port)
+{
+	std::cout << "Client constructor started.\n" std::flush;
+	
+	hints.ai_family = AF_UNSPEC; 
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE; 
+
+	std::cout << "Getting possible server information values...\n" << std::flush;
+
+	do
+	{
+		status = getaddrinfo(IP, port, &hints, &serverInfo);
+
+		if (status == INVALID)
+		{
+			if (errno  == EAI_AGAIN)
+			{
+		
+				continue;
+			}
+			else 
+			{
+
+			std::cout << "getaddrinfo error: " << gai_strerror(status) << "\n" << std::flush;	
+			exit(EXIT_FAILURE);
+		
+			}
+		
+		}
+
+  
+	}while(status != 0);
+
+	std::cout << "Acquired possible server information values.\n" << std::flush;
+
+	std::cout << "Attempting to create connection socket...\n" << std::flush;
+
+	for (addrinfo* p = serverInfo; p != nullptr; p = p->ai_next)
+	{
+
+		connection = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
+		if (connection == INVALID)
+		{
+			perror("connection socket");
+			std::cout << "Trying next available configuration...\n" << std::flush;
+	
+			continue;
+	
+
+		}
+	
+		std::cout << "Succesfully created a connection socket.\n" << std::flush;  
+
+		break;
+	
+	}	
+
+	if(server_Info->ai_family == AF_INET)
+	{	
+		std::cout << "Attempting to connect to server: " << IP << ":" << port << " through connection socket\n" << std::flush;
+	}
+	else if(server_Info->ai_family == AF_INET6)
+	{
+		
+		std::cout << "Attempting to connect to server: [" << IP << "]:" << port << " through connection socket\n" << std::flush;
+			
+	}
+
+	do
+	{
+		status = connect(connection, serverInfo->ai_addr, serverInfo->ai_addrlen);
+		if (status == INVALID)
+		{
+			if (errno == EAGAIN || errno == ETIMEDOUT)
+			{
+				continue;
+			}
+			else
+			{
+				perror("connect");
+				exit(EXIT_FAILURE);
+			}
+
+		}
+		
+	}while(status != 0);
+
+	if(server_Info->ai_family == AF_INET)
+	{	
+		std::cout << "Connection established to server: " << IP << ":" << port << " through connection socket\n" << std::flush;
+	}
+	else if(server_Info->ai_family == AF_INET6)
+	{
+		
+		std::cout << "Connection established server: [" << IP << "]:" << port << " through connection socket\n" << std::flush;
+			
+	}
+
+	std::cout << "Client constructor finished.\n" << std::flush;
+
+	
+}
+
+std::string recvall(Socket sock,  int len)
+{
+	std::string msg;
+	char* temp;
+	while(true)
+	{	
+		status = recv(sock, temp, len);
+
+		if (status != 1)
+		{	
+			if(status == INVALID)
+			{
+				perror("recvall");
+				exit(EXIT_FAILURE);
+			}
+			else
+			{
+				std::string tempString(temp);
+				msg += tempString;
+			}
+		}
+		else
+		{
+
+			if (*temp == '`')
+			{
+				break;
+			}
+			else
+			{
+				std::string tempString(temp);
+				msg += tempString;			
+			}
+
+		}
+			
+	
+	}
+	
+	return msg;
+	
+}
