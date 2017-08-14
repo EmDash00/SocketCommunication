@@ -1,0 +1,94 @@
+//Networking Libraries
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+//Debug info
+#include <iostream>
+
+//Pointer stuff
+#include <memory>
+
+#typedef int Socket; //Now I can use Socket anywhere I'd use int. Useful because sockets are described by integers.
+
+int main()
+{	
+	int status;
+
+	addrinfo hints;
+	auto servinfo = std::make_unique<addrinfo>; //server information
+
+	Socket mySocket;
+
+	/*
+	Notes:
+
+	About the "auto" keyword.
+	
+	"auto" is C++'s version of var. When delcaring a variable with auto, C++ will try to determine the variable's type without you having to name it for C++.
+
+	Useful to make code more readable and spend less time thinking about code.
+
+	std::unique_ptr<addrinfo> examplePointer = std::make_unique<addrinfo>(); 
+	auto examplePointer = std::make_unique<addrinfo>();
+
+
+	One is more readable than the other.
+
+	Also, don't use "new" for objects. Those objects will stay in memory till you explicitly delete them with "delete." Objects without new know when they need to die.
+	
+	*/
+	ZeroMemory(&hints, sizeof(hints)); //Make sure the memory at where hints is stored is clear.	
+
+	hints.ai_family = AF_UNSPEC; //Can be IPv4 or IPv6. AF_INET is IPv4 only. AF_INET6 is IPv6 only.
+	hints.ai_socktype = SOCK_STREAM; //We want a TCP stream socket. This is typically what you want.
+	hints.ai_flags = AI_PASSIVE; //Use this if you want to use the "hints" object in a "bind" function call.
+	
+	status = getaddrinfo(NULL, "25566", &hints, &servinfo); //fills servinfo with a bunch of useful info. 
+
+	//The NULL is an IP address. We don't need that. We're the server.
+
+	//		const char* Optional IP/domain, const char* port, addrinfo* hints, addrinfo** res	
+	if (status != 0)
+	{
+		std::cout << "getaddrinfo error: " << gai_strerror(status) << std::endl;	
+		return 1;
+
+	}
+	
+	mySocket = socket(servinfo->ai_family, servinfo->socktype, servinfo->ai_protocol); //Create the socket.
+
+
+	char yes = 1;
+	//		int socket, int option level, int option name, const void* option value, socklen_t option length	
+	if (setsockopt(mySocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) 
+	{
+		//setsockop sets a socket option. When we close the program port 25566 is still open and cannot be used under default options. Changing this socket option allows us to reuse it.
+		//If the function returns -1, it means setsockopt failed.
+		perror("setsockopt");
+		return 1;
+	}
+	
+	bind(mySocket, servinfo->ai_addr, servinfo->ai_addrlen);
+
+	
+	
+
+
+	char exit;
+
+	std::cout << "Press the \"ESC\" key to exit at anytime and enter to exit. Press enter alone to search for new connections." << std::endl;	
+	while 	(exit != 27) //ESC character has a ASCII base ten value of 27.
+	{	
+		
+		std::cin >> exit;
+		
+	}
+	
+	freeaddrinfo(servinfo);
+	
+		
+	return 0;
+}
+
+
